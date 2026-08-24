@@ -1,41 +1,32 @@
-from __future__ import annotations
-
-from collections import defaultdict
-
 from src.model import sample_data, solve_fleet_circulation
 
 
 def main() -> None:
-    trips, fleet = sample_data()
-    solution = solve_fleet_circulation(trips, fleet)
+    trips, fleet, depots, reposition = sample_data()
+    solution = solve_fleet_circulation(trips, fleet, depots, reposition)
 
-    print(f"Optimal objective: {solution.objective:.2f}\n")
+    print("Intercity Rail Fleet Circulation Optimization")
+    print("=" * 46)
+    print(f"Objective: {solution.objective:,.2f}")
+    print(f"Deadhead distance: {solution.deadhead_km:,.1f} km")
+    print(f"MIP gap: {solution.mip_gap}")
+    print(f"MIP node count: {solution.mip_node_count}")
 
-    print("Fleet assignments")
-    print("-----------------")
-    for trip in trips:
-        print(f"{trip.trip_id}: {solution.assignments[trip.trip_id]}")
+    print("\nFleet usage:")
+    for fleet_id, count in solution.units_used.items():
+        print(f"  {fleet_id}: {count}")
 
-    print("\nPhysical units used")
-    print("-------------------")
-    for vehicle in fleet:
-        print(f"{vehicle.fleet_id}: {solution.units_used[vehicle.fleet_id]}")
+    print("\nCirculation starts:")
+    for depot, trip_id, fleet_id in solution.starts:
+        print(f"  {fleet_id}: depot {depot} -> {trip_id}")
 
-    successors = {(first, fleet_id): second for first, second, fleet_id in solution.links}
-    starts_by_fleet = defaultdict(list)
-    for trip_id, fleet_id in solution.starts:
-        starts_by_fleet[fleet_id].append(trip_id)
+    print("\nTrip-to-trip links:")
+    for first, second, fleet_id in solution.links:
+        print(f"  {fleet_id}: {first} -> {second}")
 
-    print("\nVehicle circulations")
-    print("--------------------")
-    for fleet_id in sorted(starts_by_fleet):
-        for number, start_trip in enumerate(sorted(starts_by_fleet[fleet_id]), start=1):
-            chain = [start_trip]
-            current = start_trip
-            while (current, fleet_id) in successors:
-                current = successors[current, fleet_id]
-                chain.append(current)
-            print(f"{fleet_id} unit {number}: {' -> '.join(chain)}")
+    print("\nCirculation ends:")
+    for trip_id, depot, fleet_id in solution.ends:
+        print(f"  {fleet_id}: {trip_id} -> depot {depot}")
 
 
 if __name__ == "__main__":
